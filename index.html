@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="referrer" content="no-referrer" />
+  <title>OPC Clinical SOAP Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#0e0f11;--surface:#16181c;--surface2:#1e2026;--border:#2a2d35;
+      --accent:#4fffb0;--accent-dim:rgba(79,255,176,0.10);--accent-glow:rgba(79,255,176,0.22);
+      --text:#e8eaf0;--text-muted:#6b7280;--text-dim:#9ca3af;
+      --red:#ff5f5f;--blue:#60a5fa;
+      --mono:'DM Mono',monospace;--serif:'Instrument Serif',serif;--sans:'DM Sans',sans-serif;
+      --radius:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;font-size:14px;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:10px;}
+    .logo{display:flex;align-items:baseline;gap:10px;}
+    .logo-name{font-family:var(--serif);font-size:1.25rem;}
+    .logo-tag{font-family:var(--mono);font-size:0.6rem;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;background:var(--accent-dim);padding:2px 8px;border-radius:4px;border:1px solid rgba(79,255,176,.2);}
+    .key-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:.65rem;padding:6px 12px;border-radius:var(--radius);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;}
+    .key-btn:hover{border-color:var(--accent);color:var(--accent);}
+    .key-dot{width:6px;height:6px;border-radius:50%;background:var(--text-muted);transition:all .3s;}
+    .key-dot.active{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+    main{flex:1;display:grid;grid-template-columns:390px 1fr;gap:20px;padding:20px 28px;align-items:start;max-width:1600px;width:100%;margin:0 auto;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .panel-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .panel-title{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);}
+    .note-selector{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px;}
+    .selector-label{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);}
+    .selector-group{display:flex;flex-wrap:wrap;gap:6px;}
+    .note-chip{background:none;border:1px solid var(--border);color:var(--text-muted);font-family:var(--mono);font-size:.59rem;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .18s;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+    .note-chip:hover{border-color:var(--text-dim);color:var(--text-dim);}
+    .note-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+    .note-chip.del-chip.active{border-color:var(--blue);color:var(--blue);background:rgba(96,165,250,.1);}
+    .delivery-options{padding:10px 16px;border-bottom:1px solid var(--border);display:none;flex-direction:column;gap:8px;background:rgba(96,165,250,.03);}
+    .delivery-options.visible{display:flex;}
+    .sub-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;}
+    .record-area{padding:16px;display:flex;flex-direction:column;gap:12px;}
+    .record-center{display:flex;flex-direction:column;align-items:center;gap:8px;}
+    .record-btn{width:66px;height:66px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .22s;}
+    .record-btn:hover{border-color:var(--red);background:rgba(255,95,95,.08);}
+    .record-btn.recording{border-color:var(--red);background:rgba(255,95,95,.15);animation:pulse 1.4s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,95,95,.3);}50%{box-shadow:0 0 0 10px rgba(255,95,95,0);}}
+    .record-icon{width:24px;height:24px;border-radius:50%;background:var(--red);transition:all .2s;}
+    .record-btn.recording .record-icon{border-radius:4px;width:18px;height:18px;}
+    .record-label{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);}
+    .record-label.active{color:var(--red);}
+    .waveform{height:30px;display:flex;align-items:center;justify-content:center;gap:2px;opacity:0;transition:opacity .3s;}
+    .waveform.active{opacity:1;}
+    .wave-bar{width:2px;background:var(--accent);border-radius:2px;animation:wave .8s ease-in-out infinite;min-height:3px;}
+    @keyframes wave{0%,100%{height:4px;}50%{height:20px;}}
+    .transcript-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);min-height:110px;padding:12px;font-family:var(--sans);font-size:.85rem;line-height:1.65;color:var(--text);resize:vertical;width:100%;outline:none;transition:border-color .2s;}
+    .transcript-box:focus{border-color:var(--accent);}
+    .transcript-box::placeholder{color:var(--text-muted);font-size:.8rem;}
+    .generate-btn{width:100%;padding:12px;background:var(--accent);color:#0e0f11;border:none;border-radius:var(--radius);font-family:var(--mono);font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .generate-btn:hover{background:#5fffc5;box-shadow:0 0 18px var(--accent-glow);}
+    .generate-btn:disabled{background:var(--border);color:var(--text-muted);cursor:not-allowed;box-shadow:none;}
+    .spinner{width:12px;height:12px;border:2px solid rgba(0,0,0,.2);border-top-color:#0e0f11;border-radius:50%;animation:spin .6s linear infinite;display:none;}
+    .generate-btn.loading .spinner{display:block;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .output-panel{display:flex;flex-direction:column;}
+    .empty-state{padding:60px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
+    .empty-icon{width:34px;height:34px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto;}
+    .empty-icon::after{content:'';width:9px;height:9px;border-radius:50%;background:var(--border);}
+    .empty-text{font-family:var(--mono);font-size:.63rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;}
+    .soap-sections{display:flex;flex-direction:column;}
+    .soap-section{border-bottom:1px solid var(--border);}
+    .soap-section:last-child{border-bottom:none;}
+    .soap-section-header{padding:10px 16px;display:flex;align-items:center;gap:10px;background:var(--surface);}
+    .soap-letter{font-family:var(--serif);font-size:1.3rem;font-style:italic;color:var(--accent);line-height:1;width:22px;flex-shrink:0;}
+    .soap-section-name{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);flex:1;}
+    .missing-flag{font-family:var(--mono);font-size:.57rem;background:rgba(255,95,95,.1);color:var(--red);border:1px solid rgba(255,95,95,.25);padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em;display:none;}
+    .missing-flag.visible{display:block;}
+    .soap-content{padding:12px 16px;background:var(--bg);}
+    .soap-text{font-family:var(--sans);font-size:.85rem;line-height:1.75;color:var(--text);min-height:60px;width:100%;border:none;background:transparent;outline:none;resize:vertical;font-weight:300;}
+    .soap-text::placeholder{color:var(--border);}
+    .gaps-panel{margin:0 16px 16px;background:rgba(255,95,95,.06);border:1px solid rgba(255,95,95,.2);border-radius:var(--radius);padding:12px;display:none;}
+    .gaps-panel.visible{display:block;}
+    .gaps-title{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--red);margin-bottom:8px;}
+    .gap-item{font-size:.8rem;color:var(--text-dim);padding:3px 0 3px 14px;position:relative;line-height:1.5;}
+    .gap-item::before{content:'!';position:absolute;left:0;color:var(--red);font-family:var(--mono);font-size:.65rem;}
+    .output-actions{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--surface);}
+    .action-btn{flex:1;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-dim);font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:all .2s;}
+    .action-btn:hover{border-color:var(--accent);color:var(--accent);}
+    .action-btn.success{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;width:430px;display:flex;flex-direction:column;gap:14px;}
+    .modal-title{font-family:var(--serif);font-size:1.15rem;}
+    .modal-sub{font-size:.8rem;color:var(--text-muted);line-height:1.6;}
+    .modal-input{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;color:var(--text);font-family:var(--mono);font-size:.8rem;width:100%;outline:none;transition:border-color .2s;}
+    .modal-input:focus{border-color:var(--accent);}
+    .modal-note{font-size:.72rem;color:var(--text-muted);font-family:var(--mono);background:var(--surface2);border-radius:6px;padding:10px 12px;line-height:1.6;}
+    .modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+    .modal-cancel{background:none;border:1px solid var(--border);color:var(--text-muted);font-family:var(--mono);font-size:.68rem;padding:7px 14px;border-radius:8px;cursor:pointer;text-transform:uppercase;}
+    .modal-save{background:var(--accent);color:#0e0f11;border:none;font-family:var(--mono);font-size:.68rem;font-weight:500;padding:7px 16px;border-radius:8px;cursor:pointer;text-transform:uppercase;}
+    .toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;font-family:var(--mono);font-size:.68rem;color:var(--text-dim);z-index:300;transform:translateY(70px);opacity:0;transition:all .28s;max-width:320px;}
+    .toast.show{transform:translateY(0);opacity:1;}
+    .toast.error{border-color:var(--red);color:var(--red);background:rgba(255,95,95,.08);}
+    .toast.success{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+    @media(max-width:880px){main{grid-template-columns:1fr;}header{padding:12px 16px;}main{padding:14px 16px;}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-name">OPC Clinical</span>
+    <span class="logo-tag">SOAP Assistant</span>
+  </div>
+  <div class="header-right">
+    <button class="key-btn" id="keyBtn" onclick="openKeyModal()">
+      <span class="key-dot" id="keyDot"></span>
+      API Key
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Note Type + Voice Input</span></div>
+
+    <div class="note-selector">
+      <span class="selector-label">Select Note Type</span>
+      <div class="selector-group">
+        <button class="note-chip" onclick="selectNote('casting',this)">Casting</button>
+        <button class="note-chip" onclick="selectNote('diag_fitting',this)">Diagnostic Fitting</button>
+        <button class="note-chip" onclick="selectNote('diag_2nd',this)">Diag 2nd Check</button>
+        <button class="note-chip" onclick="selectNote('diag_home',this)">Diag Home Trial</button>
+        <button class="note-chip" onclick="selectNote('fu_no_adj',this)">F/U No Adjustment</button>
+        <button class="note-chip" onclick="selectNote('fu_socket_rep',this)">F/U Socket Replacement</button>
+        <button class="note-chip" onclick="selectNote('shrinker',this)">Shrinker Eval</button>
+        <button class="note-chip" onclick="selectNote('rigid',this)">Rigid Dressing</button>
+        <button class="note-chip" onclick="selectNote('supplies_eval',this)">Supplies Eval</button>
+        <button class="note-chip" onclick="selectNote('supplies_del',this)">Supplies Delivery</button>
+        <button class="note-chip del-chip" onclick="selectNote('delivery',this)">Delivery</button>
+        <button class="note-chip" onclick="selectNote('replacement',this)">Replacement Socket</button>
+      </div>
+    </div>
+
+    <div class="delivery-options" id="deliveryOptions">
+      <div>
+        <span class="selector-label">Patient Type</span>
+        <div class="sub-row">
+          <button class="note-chip active" id="pt-new" onclick="setOpt('pt','new',this)">New Amp</button>
+          <button class="note-chip" id="pt-existing" onclick="setOpt('pt','existing',this)">Existing</button>
+          <button class="note-chip" id="pt-bilateral" onclick="setOpt('pt','bilateral',this)">Bilateral New</button>
+          <button class="note-chip" id="pt-bilateral-existing" onclick="setOpt('pt','bilateral-existing',this)">Bilateral Existing</button>
+        </div>
+      </div>
+      <div>
+        <span class="selector-label">K-Level</span>
+        <div class="sub-row">
+          <button class="note-chip active" id="kl-K1" onclick="setOpt('kl','K1',this)">K1</button>
+          <button class="note-chip" id="kl-K2" onclick="setOpt('kl','K2',this)">K2</button>
+          <button class="note-chip" id="kl-K3" onclick="setOpt('kl','K3',this)">K3</button>
+          <button class="note-chip" id="kl-K4" onclick="setOpt('kl','K4',this)">K4</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="record-area">
+      <div class="record-center">
+        <button class="record-btn" id="recordBtn" onclick="toggleRecord()">
+          <div class="record-icon"></div>
+        </button>
+        <span class="record-label" id="recordLabel">Tap to Record</span>
+      </div>
+      <div class="waveform" id="waveform"></div>
+      <textarea class="transcript-box" id="transcript" rows="8"
+        placeholder="Speak your clinical notes. Include where the visit took place, who was present, how patient arrived, assistive device used, limb condition, what patient reported, your findings, adjustments made, gait observations, skin check results, and your plan..."></textarea>
+      <button class="generate-btn" id="generateBtn" onclick="generateSOAP()">
+        <div class="spinner"></div>
+        <span id="generateLabel">Generate SOAP Note</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel output-panel">
+    <div class="panel-header">
+      <span class="panel-title">SOAP Note Output</span>
+      <span id="outputNoteLabel" style="font-family:var(--mono);font-size:.6rem;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;"></span>
+    </div>
+    <div id="emptyState" class="empty-state">
+      <div class="empty-icon"></div>
+      <div class="empty-text">Select a note type, record or type, then generate</div>
+    </div>
+    <div id="soapOutput" style="display:none;">
+      <div class="soap-sections">
+        <div class="soap-section">
+          <div class="soap-section-header">
+            <span class="soap-letter">S</span>
+            <span class="soap-section-name">Subjective</span>
+            <span class="missing-flag" id="flag-s">Incomplete</span>
+          </div>
+          <div class="soap-content"><textarea class="soap-text" id="soap-s" rows="8" placeholder="Subjective..."></textarea></div>
+        </div>
+        <div class="soap-section">
+          <div class="soap-section-header">
+            <span class="soap-letter">O</span>
+            <span class="soap-section-name">Objective</span>
+            <span class="missing-flag" id="flag-o">Incomplete</span>
+          </div>
+          <div class="soap-content"><textarea class="soap-text" id="soap-o" rows="12" placeholder="Objective..."></textarea></div>
+        </div>
+        <div class="soap-section">
+          <div class="soap-section-header">
+            <span class="soap-letter">A</span>
+            <span class="soap-section-name">Assessment</span>
+            <span class="missing-flag" id="flag-a">Incomplete</span>
+          </div>
+          <div class="soap-content"><textarea class="soap-text" id="soap-a" rows="7" placeholder="Assessment..."></textarea></div>
+        </div>
+        <div class="soap-section">
+          <div class="soap-section-header">
+            <span class="soap-letter">P</span>
+            <span class="soap-section-name">Plan</span>
+            <span class="missing-flag" id="flag-p">Incomplete</span>
+          </div>
+          <div class="soap-content"><textarea class="soap-text" id="soap-p" rows="7" placeholder="Plan..."></textarea></div>
+        </div>
+      </div>
+      <div class="gaps-panel" id="gapsPanel">
+        <div class="gaps-title">Documentation Gaps — Audit Risk</div>
+        <div id="gapsList"></div>
+      </div>
+      <div class="output-actions">
+        <button class="action-btn" id="copyBtn" onclick="copyAll()">Copy Full Note</button>
+        <button class="action-btn" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="keyModal">
+  <div class="modal">
+    <div class="modal-title">Anthropic API Key</div>
+    <div class="modal-sub">Stored in memory only for this session. Never saved to disk, never logged, never transmitted except directly to Anthropic's API to generate your note.</div>
+    <input class="modal-input" type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
+    <div class="modal-note">No patient data is retained by this tool. Your spoken transcript is sent to Claude only to structure your clinical language into a SOAP note. Nothing is stored.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeKeyModal()">Cancel</button>
+      <button class="modal-save" onclick="saveKey()">Save for Session</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let apiKey='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', currentNoteType='', deliveryPt='new', deliveryKL='K1';
+let recognition=null, isRecording=false, finalTranscript='';
+
+// Waveform
+const wf=document.getElementById('waveform');
+for(let i=0;i<16;i++){const b=document.createElement('div');b.className='wave-bar';b.style.animationDelay=(i*.07).toFixed(2)+'s';b.style.animationDuration=(.55+Math.random()*.5).toFixed(2)+'s';wf.appendChild(b);}
+
+function selectNote(type,btn){
+  document.querySelectorAll('.note-chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  currentNoteType=type;
+  document.getElementById('deliveryOptions').classList.toggle('visible',type==='delivery');
+}
+
+function setOpt(group,val,btn){
+  const ids=group==='pt'?['pt-new','pt-existing','pt-bilateral','pt-bilateral-existing']:['kl-K1','kl-K2','kl-K3','kl-K4'];
+  ids.forEach(id=>document.getElementById(id).classList.remove('active'));
+  btn.classList.add('active');
+  if(group==='pt')deliveryPt=val; else deliveryKL=val;
+}
+
+function toggleRecord(){
+  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){showToast('Speech recognition requires Chrome.','error');return;}
+  isRecording?stopRecording():startRecording();
+}
+function startRecording(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();recognition.continuous=true;recognition.interimResults=true;recognition.lang='en-US';
+  recognition.onresult=e=>{
+    let interim='',fin='';
+    for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)fin+=e.results[i][0].transcript+' ';else interim+=e.results[i][0].transcript;}
+    finalTranscript+=fin;document.getElementById('transcript').value=finalTranscript+interim;
+  };
+  recognition.onerror=e=>{showToast('Mic error: '+e.error,'error');stopRecording();};
+  recognition.onend=()=>{if(isRecording)recognition.start();};
+  recognition.start();isRecording=true;
+  document.getElementById('recordBtn').classList.add('recording');
+  document.getElementById('recordLabel').textContent='Recording... Tap to Stop';
+  document.getElementById('recordLabel').classList.add('active');
+  document.getElementById('waveform').classList.add('active');
+}
+function stopRecording(){
+  if(recognition){recognition.stop();recognition=null;}
+  isRecording=false;
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('recordLabel').textContent='Tap to Record';
+  document.getElementById('recordLabel').classList.remove('active');
+  document.getElementById('waveform').classList.remove('active');
+  finalTranscript=document.getElementById('transcript').value;
+}
+
+function getNoteLabel(){
+  const ptLabels={'new':'New Amputee','existing':'Existing Patient','bilateral':'Bilateral New','bilateral-existing':'Bilateral Existing'};
+  const labels={casting:'Casting',diag_fitting:'Diagnostic Socket Fitting',diag_2nd:'Diagnostic 2nd Check',diag_home:'Diagnostic Home Trial',fu_no_adj:'Follow-Up No Adjustment',fu_socket_rep:'Follow-Up Socket Replacement',shrinker:'Shrinker Eval and Fit',rigid:'Rigid Dressing',supplies_eval:'Supplies Evaluation',supplies_del:'Supplies Delivery',replacement:'Replacement Socket Delivery',delivery:`Delivery — ${ptLabels[deliveryPt]||deliveryPt} ${deliveryKL}`};
+  return labels[currentNoteType]||currentNoteType;
+}
+
+function buildSystemPrompt(){
+  return `You are an expert clinical documentation assistant for OPC Prosthetics. You produce P&O SOAP notes that must withstand Medicare LCD L33787 / Policy Article A52496 audit review, including ALJ hearings.
+
+══ OPIE EMR MERGE TAGS ══
+Use these tags exactly as written. OPIE will auto-populate them when the note is pasted in. Pull values from the clinician's spoken notes if stated; otherwise leave the tag as-is so OPIE can fill it.
+
+PATIENT NAME:
+  <<first name>>           patient first name, mid-sentence
+  <<first name>>'s         patient possessive
+  <<full name>>            patient full name
+
+PRONOUNS — use correct pronoun based on sex if mentioned in notes:
+  <<he/she>>               mid-sentence subject
+  <<He/She caps>>          sentence-starting subject
+  <<his/her>>              mid-sentence possessive
+  <<His/Her caps>>         sentence-starting possessive
+  <<him/her>>              mid-sentence object
+  <<Him/Her caps>>         sentence-starting object
+  <<him/her>>self          reflexive
+
+CLINICAL FIELDS — pull from spoken notes if mentioned, otherwise leave tag:
+  <<referring phys>>       referring physician
+  <<age>>                  patient age
+  <<sex>>                  patient sex
+  <<weight>>               patient weight (lbs)
+  <<height>>               patient height
+  <<affected side>>        left or right — pull from notes if stated
+  <<device type>>          prosthesis type — pull from notes if stated
+  <<diagnosis>>            amputation diagnosis — always use this tag
+  <<visit date>>           date of service
+  <<practitioner (appt)>>  treating clinician
+  <<branch patient (primary)>>  OPC office branch
+  <<weight date>>          date weight was recorded
+
+DO NOT use <<diagnosis secondary>> or <<amputation date>>.
+NEVER invent clinical values. Write around missing info naturally.
+
+══ EVALUATION DETAILS — ALWAYS AT TOP OF SUBJECTIVE ══
+Every note must open with an Evaluation Details paragraph. If the clinician provided limited info, keep it short but include what is available. Structure:
+1. Location — specific: OPC [city] office / patient home / facility name. Default: "the OPC office" if not stated.
+2. Who was present — caregiver, family, interpreter, facility staff. Omit if not mentioned.
+3. How patient arrived and assistive device — wheelchair, walker, crutches, none.
+4. Transfer status — independent / with assistance / with increased time.
+5. General presentation — alert, oriented, affect appropriate. Note abnormalities only if mentioned.
+6. Limb condition — skin integrity, edema, shape, healing. Brief note if not mentioned.
+7. Prosthesis status — wearing or not, hours/day, issues. For new amputees: state clearly no prosthesis.
+8. Language/communication — only if mentioned.
+
+Write as one tight paragraph. Past tense. Objective and observational. No opinions. No history repetition. Do not start justifying the prosthesis.
+
+STRONG EXAMPLE: "The evaluation was conducted at the OPC St. Petersburg office. <<First name>> was accompanied by <<his/her>> spouse, who assists with daily care. <<He/She caps>> arrived using a standard walker and transferred independently from seated to standing with increased time and reliance on upper extremities. <<He/She caps>> presented alert and oriented with affect appropriate to the clinical situation. The residual limb was intact without open areas; mild distal edema was noted. <<First name>> was not wearing a prosthesis at the time of evaluation."
+
+══ DOCUMENTATION STANDARDS ══
+SUBJECTIVE: Tell the patient story. Establish WHY they need the device. Include functional impact on ADLs/IADLs, living situation, environmental barriers, fall risk, activity limitations, patient goals. Connect all complaints to prosthetic failure or absence. Quantify everything. Never say "difficulty ambulating" — say how, where, and why.
+
+OBJECTIVE: Measurable, defensible evidence. Physical exam, ROM, strength, cognition, pain tied to socket/components, specific gait deviations. Every abnormal finding ties to socket fit, component failure, or absence of prosthesis. For delivery notes: include pre-fitting inspection, donning, weight-bearing, gait analysis, skin exam, full Safety Check boilerplate.
+
+ASSESSMENT: The clinical argument. Functional limitations, cognitive ability supporting prosthetic use, K-level justification using exact LCD language, prognosis with prosthesis. Answer: WHY does this patient NEED this device? For replacement: clearly state why current prosthesis no longer works and why all modifications are exhausted.
+
+PLAN: What will be done and why it is reasonable and necessary. Functional use, wear time, ADLs/IADLs supported, prosthetic prescription with justification, measurable/functional/time-based LTGs and STGs, education, follow-up timeline.
+
+LANGUAGE RULES:
+- Paragraph format for narrative sections; use hyphens for boilerplate lists
+- Past tense throughout
+- Never: "doing well", "tolerates", "functional", "patient doing okay"
+- Always quantify: distance, time, assistance level, sock ply, hours/day
+- Specific environments: "unable to safely navigate uneven outdoor terrain, curbs, and stairs" not "difficulty walking"
+
+══ SAFETY CHECK BOILERPLATE ══
+Use for all delivery and supply notes. Include exactly:
+SAFETY CHECK:
+- Equipment and supplies were assessed for structural safety.
+- Manufacturer guidelines were followed.
+- Trim lines are appropriate. Explanation: Contours to anatomy and does not impair ROM.
+- Loctite was applied if and where appropriate. Explanation: Loctite was applied to all screws before tightening.
+- All torque settings were checked. Explanation: Based on manufacturer's specifications.
+- Weight rating for the patient is appropriate. Explanation: Reviewed manufacturer literature to confirm weight ratings. <<first name>>'s weight was recorded as <<weight>> on <<weight date>>.
+- Serial number and warranty information were documented in lower limb consumables and component forms, if applicable.
+- All components used correspond with the work order and are recorded in <<first name>>'s Electronic Health Record.
+- All edges are reported smooth and safe.
+- The overall length of the prosthetic socket is reported to be correct.
+- The knee center to floor length is reported to be correct.
+- The overall height of the prosthesis is reported to be correct.
+- The socket is properly attached to the components.
+- The prosthesis is reported to be the correct socket for <<first name>>.
+- The completed device is reported to meet the visual presentation standards of the practice.
+- The measurements of the completed device are reported to match the requested measurements on the fabrication work order.
+- All documented special fabrication instructions have been followed as requested.
+- It was verified, authenticated, and documented that no parts are misbranded and that all parts are appropriately labeled for their intended distribution channels.
+- Copies of the features, warranties, and instructions for each type of non-custom fabricated item, equipment, and/or service were obtained from the manufacturer and provided to <<first name>>.
+This safety check was completed by <<practitioner (appt)>> on <<visit date>>, before fitting the definitive prosthesis.
+
+For BILATERAL notes, adjust to plural: "prostheses", "sockets", "work orders", "devices", "prosthetic limbs".
+
+══ EDUCATION BOILERPLATE ══
+Use for all notes:
+EDUCATION:
+<<first name>> was educated on:
+- Sock use and changes in volume.
+- Effects of changes in weight, medication, and activities.
+- Sock cleaning and care.
+- Liner use and care.
+- Proper shoe wear.
+- Proper donning and doffing.
+- How to check skin and what to look for.
+- Noise issues.
+- Wear time and schedule.
+- Who to contact if there are problems.
+- How to contact <<practitioner (appt)>> and/or the <<branch patient (primary)>> office for adjustments.
+- Follow-up appointments.
+- <<first name>> was provided with printed education material.
+- Component warranty information was discussed: <<first name>> was provided with manufacturer literature.
+
+For K1 notes and notes with caregivers present, address education to patient AND caregivers.
+
+══ NOTE TYPE: ${getNoteLabel()} ══
+${getNoteInstructions()}
+
+══ OUTPUT FORMAT ══
+Return ONLY valid JSON. No preamble, no markdown, no code fences:
+{
+  "s": "complete subjective — Evaluation Details paragraph first, then full patient story",
+  "o": "complete objective — clinical findings, gait if applicable, Safety Check boilerplate if applicable",
+  "a": "complete assessment — K-level justification, LTGs numbered list, STGs numbered list, progress statement",
+  "p": "complete plan — treatment plan, Education boilerplate, schedule reminder",
+  "gaps": ["specific gap 1", "specific gap 2"]
+}
+
+Gaps must identify specific documentation failures that could trigger audit denial: missing K-level justification, no ADL impact, no fall risk, no functional outcome, missing limb condition, missing gait findings, vague language used, etc. Empty array if none.`;
+}
+
+function getNoteInstructions(){
+  if(currentNoteType==='delivery') return getDeliveryInstructions();
+  const map={
+    casting:`CASTING: Subjective opens with Evaluation Details, then: <<first name>> was seen for casting of <<his/her>> residual limb for fabrication of the <<device type>>. <<first name>>'s diagnosis is <<diagnosis>>. Referring physician is <<referring phys>>. Patient reported no changes since last visit. Residual limb inspected; suture line well-healed and ready for casting. Objective: liner fitted (size documented), measurements taken over liner and recorded on Lab Order and Measurement Form. Bony landmarks and modification areas marked. Single-stage fiberglass cast taken and removed without incident. Liner removed; skin inspected, no irritation. Plan: positive model will be made, modified for total contact fit and pressure relief on bony prominences. Diagnostic socket will be fabricated from Vivak plastic. Education boilerplate (omit shoe wear if pre-prosthetic). Patient will be seen for diagnostic fitting when socket fabricated. Patient advised not to wait until next appointment if problems arise.`,
+
+    diag_fitting:`DIAGNOSTIC FITTING: Subjective opens with Evaluation Details, then: <<full name>> was seen today for fitting of a diagnostic prosthetic socket. Include patient/caregiver report, assistive devices, how patient was feeling, gait before fitting if applicable, limb condition before fitting. The socket is fabricated from 1/2" Vivak plastic, is a __________ design, and utilizes a __________ suspension system. Prior to the appointment, the socket was inspected and found to be structurally sound and free of any sharp edges or defects that could cause harm to the patient. It meets the standards of myself as well as OPC. Objective: donning with sock ply documented. Static alignment established, height confirmed. Patient cued to weight-bear. Dynamic alignment performed. Socket modifications listed. Following all alignment and socket adjustments, <<first name>> reported no areas of discomfort. After today's appointment the prosthesis and prosthetic liner were removed; a skin check was performed and found to be unremarkable. <<first name>> tolerated today's procedure without incident and had no further questions or concerns. The diagnostic socket will be used in the fabrication of the definitive prosthesis. <<first name>> will return for fitting and delivery of a definitive prosthesis after fabrication is complete. In the Objective, include a subsection: ADJUSTMENTS TO DIAGNOSTIC PROSTHESIS: / Socket Modifications: [from notes or leave blank] / Alignment Changes and Adjustments: [from notes or leave blank]. Education boilerplate; include: educated on and agreed to safety protocols while walking with diagnostic socket. Plan: Clinical: Definitive socket will be fabricated and <<first name>> will return for fitting and delivery. Admin: Schedule delivery when definitive device is fabricated.`,
+
+    diag_2nd:`DIAGNOSTIC 2ND CHECK: Same opening as diagnostic fitting. After donning attempt: It was determined upon attempted fitting that modifications are necessary to a degree that a second check socket is needed. List modifications from clinician notes. <<first name>> will return for fitting of the second check socket after fabrication is complete. <<He/She caps>> understands and is satisfied with this plan. Skin check performed and unremarkable. Education boilerplate with safety protocol for diagnostic socket. Plan: A second diagnostic socket will be fabricated and <<first name>> will be seen for fitting. Admin: Schedule second diagnostic fitting when device is fabricated.`,
+
+    diag_home:`DIAGNOSTIC HOME TRIAL: Same as diagnostic fitting but socket will be taken home for trial. After alignment and adjustments completed: socket attachment reinforced with fiberglass; loctite applied where appropriate. Patient educated on and agreed to safety protocols for walking with diagnostic prosthetic socket. Include adapted Safety Check boilerplate including: socket attachment reinforced with fiberglass, socket properly attached, safety check completed before departure. Education boilerplate; include safety protocol agreement. Plan: Definitive socket will be fabricated and <<first name>> will return for fitting and delivery. Admin: Schedule delivery when definitive device is fabricated.`,
+
+    fu_no_adj:`FOLLOW-UP NO ADJUSTMENT: Subjective opens with Evaluation Details, then: <<first name>> was seen for a follow up of <<his/her>> <<device type>>. Referred by <<referring phys>>. Overall structural integrity assessed; prosthesis found safe and free of mechanical defect. <<first name>> is currently wearing the prosthesis for ___ hours a day with a minimum of ___ ply and a maximum of ___ ply of socks. <<He/She caps>> stated the prosthesis is comfortable and there are no issues with fit or function. Upon exam, skin remains intact and unremarkable. No adjustments were made during this visit. Goals: 1. Provide standard follow up care. 2. Ensure prosthesis functioning correctly. 3. Provide properly fitting socket. 4. Educate patient on proper wear and use protocols. 5. Provide support and guidance for positive outcome. Safety Check boilerplate. Education boilerplate. Patient advised to call office immediately if problem arises before next scheduled appointment.`,
+
+    fu_socket_rep:`FOLLOW-UP SOCKET REPLACEMENT: Subjective opens with Evaluation Details, then: <<first/last name>> is a <<age>> <<sex>> who underwent amputation secondary to <<diagnosis>>. Referred by <<referring phys>>. Document current wear time and sock ply. Document patient-reported problems: fit, function, safety, ADL impact, fall risk, activity reduction, social withdrawal. Document compliance. Document all socket modifications and alignment adjustments exhausted. State clearly WHY replacement is required: limb shape/volume change, persistent poor fit, skin integrity concerns, inability to perform ADLs, pain, instability, fall risk. To return to daily activities, <<first name>> requires a replacement prosthetic socket and new prosthetic supplies. Goals: 1. Provide standard follow up care. 2. Ensure prosthesis functioning correctly. 3. Provide properly fitting socket. 4. Educate patient on proper wear and use protocols. 5. Provide support and guidance for positive outcome. Safety Check boilerplate. Education boilerplate. Patient advised to call office immediately if problem arises before next appointment. Patient scheduled to return for measurement and limb capture.`,
+
+    shrinker:`SHRINKER EVAL AND FIT: Subjective opens with Evaluation Details, then: <<first name>> was seen for evaluation and fitting of a prosthetic shrinker. Diagnosis: <<diagnosis>>. Referring physician: <<referring phys>>. Document weeks since amputation. Document purpose: reduce edema, shape limb, desensitize residual limb. IF STITCHES IN: Residual limb inspected. Stitches/staples not yet removed. Shrinker will not be fit until all stitches/staples removed. Nursing staff and therapists advised. Will return weekly to monitor progress. IF STITCHES OUT: All stitches/staples removed. Suture line well-healed; no areas of concern. Measurements: Proximal circumference: ___ / Distal circumference: ___ / Length of residuum: ___. Pre-fit quality check performed. Fit details and patient tolerance documented. Education: purpose and mechanism counseled. All involved personnel educated on donning/doffing, wear/care, skin checks. Plan: facility will call for follow-up as needed. Will monitor limb shaping. When limb appropriately shaped, will begin evaluation for prosthesis.`,
+
+    rigid:`RIGID DRESSING: Subjective opens with Evaluation Details, then: <<first name>> was seen for evaluation and fitting of a post-surgical, non-weight bearing rigid dressing following recent amputation. Ordered by <<referring phys>>. Chart reviewed; physician order obtained. Objective: purpose documented — protect surgical site during transfers and mobility, prevent knee flexion contracture by holding limb in extension. Pre-fitting assessment: structural integrity confirmed, no sharp edges, all straps and Velcro functioning. Purpose and mechanism explained to patient and all involved parties. Measurements: Circumference 6" proximal to KC: ___ / Circumference at knee center: ___ / Circumference distal residual limb: ___. Fitting procedure documented, avoiding pressure on drains, post-op dressings left in place, clearances appropriate. All parties instructed on wear/care and don/doff verbally and in writing. Contact information provided.`,
+
+    supplies_eval:`SUPPLIES EVALUATION: Subjective opens with Evaluation Details, then: <<first name>> came to the office for initial evaluation for prosthetic supplies. Diagnosis: <<diagnosis>>. Referring physician: <<referring phys>>. Document what patient reported and why current supplies need replacement. Document medical necessity for each supply type: liners (interface, suspension, reduce shear forces on residual limb), socks (volume accommodation, total contact fit, prevent skin breakdown), suspension sleeves if applicable (seal creation, prosthetic suspension safety). Because overall socket fit is good, same-sized supplies will be ordered once all necessary documentation received. <<first name>> will be seen for fit and delivery of prosthetic supplies. <<first name>> made aware of plan and agrees. All questions addressed.`,
+
+    supplies_del:`SUPPLIES DELIVERY: Subjective opens with Evaluation Details, then: <<first name>> was seen for fit and delivery of prosthetic supplies. Diagnosis: <<diagnosis>>. Referring physician: <<referring phys>>. Document patient demeanor. Current supplies badly worn and negatively affecting fit and function. Pre-fit quality check: all ordered supplies of sound structural integrity, free of sharp edges and imperfections. Fit details including liner trimming and loctite application. Patient reported comfort and satisfaction. Ambulation result. Safety Check boilerplate (adapted for supplies). Patient educated verbally and in writing on don/doff; demonstrated proficiency. Wear schedule and skin check importance. Return to office for follow-up in one week and as needed.`,
+
+    replacement:`REPLACEMENT SOCKET: Subjective opens with Evaluation Details, then: <<first/last name>> is a <<age>> <<sex>> who was seen today for fit and delivery of <<his/her>> <<affected side>> replacement prosthetic socket. OPC was asked to evaluate <<first name>> for a <<device type>> by <<referring phys>>. Document delivery setting, patient demeanor, caregivers present. Objective: Prosthetic socket examined before fitting; no sharp edges. Socket set up on current prosthetic componentry. All screws torqued to manufacturer's specifications. Loctite applied as appropriate. Patient and caregivers demonstrated competence in donning, doffing, and cleaning prosthetic liner. Using __________ as assistive device, <<first name>> stood and was cued to shift weight to fully enter socket. No discomfort reported. After alignment and fit clinically approved, liner removed, skin exam performed, no concerns. Skin check education. Don/doff demonstrated. Safety Check boilerplate. Assessment LTGs (6 months): 1. Decrease pain 90-100% to allow improved function. 2. A/PROM <<affected side>> LE WNL and pain free. 3. Pain-free self-care, home management, and recreation tasks. 4. Return to ADLs and IADLs without restriction. 5. Decrease stumbles/falls by 90-100%. STGs (4 weeks): 1. Attain standing balance with equal weight distribution. 2. Initiate proper gait sequence with or without cues. 3. Pain <3 in <<affected side>> residual limb upon full weight bearing. Progress: <<First name>> is progressing well towards the goals established at evaluation, achieving short-term goals #1-3. With the use of a prosthesis, <<first name>> will have the ability to return to <<his/her>> previous level of function. Plan: Patient comfortable and understands use and break-in period. <<first name>> will notify <<practitioner (appt)>> with concerns. Standard follow-up in one week. Admin: Follow-up in one week. Education boilerplate. Schedule: Patient reminded to schedule 1 Hour Follow-Up (Initial) in 1 Week. <<first name>> reminded follow-up appointments can be scheduled at any time by calling the <<branch patient (primary)>> office.`
+  };
+  return map[currentNoteType]||'Follow OPC SOAP documentation standards with full OPIE merge tags and Evaluation Details paragraph at top of Subjective.';
+}
+
+function getDeliveryInstructions(){
+  const bilateral=deliveryPt==='bilateral'||deliveryPt==='bilateral-existing';
+  const existing=deliveryPt==='existing'||deliveryPt==='bilateral-existing';
+  const kl=deliveryKL;
+  const limb=bilateral?'bilateral prosthetic limbs':'<<affected side>> prosthetic limb';
+  const prosth=bilateral?'prostheses':'prosthesis';
+  const socket=bilateral?'prosthetic sockets':'prosthetic socket';
+  const liners=bilateral?'prosthetic liners':'prosthetic liner';
+
+  const ltgs={
+    K1:`1. Decrease pain 90-100% to allow improved function.\n2. A/PROM ${bilateral?'bilateral':'<<affected side>>'} LE WFL and pain free.\n3. Pain-free self-care, home management, and recreation tasks.\n4. Return to ADLs and IADLs with or without assistance.\n5. Return to transferring independently or with minimal to moderate assistance.\n6. Ambulate >20ft 2x/day with a standard walker with supervision or minimal to moderate assistance over mostly level ground.`,
+    K2:`1. Decrease pain 90-100% to allow improved function.\n2. A/PROM ${bilateral?'bilateral':'<<affected side>>'} LE WNL and pain-free.\n3. Pain-free self-care, home management, and recreation tasks.\n4. Return to ADLs and IADLs without restriction.\n5. Return to community-level ambulation, including the ability to navigate curbs and 1-3 stairs with or without an assistive device.\n6. Ambulate >500ft 2x/day with or without a standard walker or cane without supervision over mostly level ground.\n7. Return to unlimited ambulation within the home.\n8. Return to accessing private or public transportation.\n9. Negotiate a ramp built to ADA specifications.`,
+    K3:`1. Decrease pain 90-100% to allow improved function.\n2. A/PROM ${bilateral?'bilateral':'<<affected side>>'} LE WNL and pain-free.\n3. Pain-free self-care, home management, and recreation tasks.\n4. Return to ADLs and IADLs without restriction.\n5. Return to community-level ambulation, including the ability to navigate 3-7 consecutive stairs without an assistive device.\n6. Ambulate >1000ft 2x/day without an assistive device and without supervision on uneven terrain.\n7. Return to unlimited ambulation within the home and community.\n8. Return to accessing private and/or public transportation.\n9. Negotiate a ramp built to ADA specifications.\n10. Perform dual ambulation tasks.\n11. Ambulate through crowded areas, such as a grocery store.\n12. Cross a controlled intersection within a predetermined time limit.`,
+    K4:`1. Decrease pain 90-100% to allow improved function.\n2. A/PROM ${bilateral?'bilateral':'<<affected side>>'} LE WNL and pain-free.\n3. Pain-free self-care, home management, and recreation tasks.\n4. Return to ADLs and IADLs without restriction.\n5. Return to community-level ambulation, including the ability to navigate 3-7 consecutive stairs without an assistive device.\n6. Ambulate >2500ft 2x/day without an assistive device and without supervision on uneven terrain.\n7. Return to unlimited ambulation within the home and community.\n8. Return to accessing private and/or public transportation.\n9. Negotiate a ramp built to ADA specifications.\n10. Perform dual ambulation tasks.\n11. Ambulate through crowded areas, such as a grocery store.\n12. Cross a controlled intersection within a predetermined time limit.\n13. Return to high-impact activity without restriction.`
+  };
+
+  const stgs={
+    K1:`1. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n2. Attain standing balance with equal weight distribution upon delivery.\n3. Stand for >60 seconds with assistance.\n4. Initiate proper gait sequence with or without cues.\n5. Ambulate 10' in parallel bars or standard walker with >50% weight bearing on ${bilateral?'bilateral':'<<affected side>>'} LE with moderate to maximum assistance over level surface.`,
+    K2:existing
+      ?`1. Attain standing balance with equal weight distribution upon delivery.\n2. Initiate proper gait sequence with or without cues.\n3. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n4. Ambulate 50' with >50% weight bearing on ${bilateral?'bilateral':'<<affected side>>'} LE with supervision over level surface.`
+      :`1. Reduce edema 75-100% in ${bilateral?'bilateral':'<<affected side>>'} residuum in preparation for prosthetic fitting.\n2. Decrease phantom pain/sensation >50% through desensitization techniques.\n3. Attain standing balance with equal weight distribution upon delivery.\n4. Initiate proper gait sequence with or without cues.\n5. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n6. Ambulate 50' with >50% weight bearing on ${bilateral?'bilateral':'<<affected side>>'} LE with supervision over level surface.`,
+    K3:existing
+      ?`1. Attain standing balance with equal weight distribution upon delivery.\n2. Initiate proper gait sequence with or without cues.\n3. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n4. Ambulate 250ft with >50% weight bearing with supervision over level surface.\n5. Ambulate >50ft on uneven ground.\n6. Negotiate a curb and 1-3 consecutive stairs.`
+      :`1. Reduce edema 75-100% in ${bilateral?'bilateral':'<<affected side>>'} residuum.\n2. Decrease phantom pain/sensation >50% through desensitization techniques.\n3. Attain standing balance with equal weight distribution upon delivery.\n4. Initiate proper gait sequence with or without cues.\n5. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n6. Ambulate 250ft with >50% weight bearing with supervision over level surface.\n7. Ambulate >50ft on uneven ground.\n8. Negotiate a curb and 1-3 consecutive stairs.`,
+    K4:existing
+      ?`1. Attain standing balance with equal weight distribution upon delivery.\n2. Initiate proper gait sequence with or without cues.\n3. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n4. Ambulate >500ft with supervision over level surface.\n5. Ambulate >100ft on uneven ground.\n6. Negotiate a curb and 1-3 consecutive stairs.`
+      :`1. Reduce edema 75-100% in ${bilateral?'bilateral':'<<affected side>>'} residuum.\n2. Decrease phantom pain/sensation >50% through desensitization techniques.\n3. Attain standing balance with equal weight distribution upon delivery.\n4. Initiate proper gait sequence with or without cues.\n5. Pain <3 in ${bilateral?'bilateral':'<<affected side>>'} residual limb upon full weight bearing.\n6. Ambulate >500ft in parallel bars or standard walker with supervision over level surface.\n7. Ambulate >100ft on uneven ground.\n8. Negotiate a curb and 1-3 consecutive stairs.`
+  };
+
+  const progress={
+    K1:`<<First name>> is progressing well towards the goals established at evaluation, achieving short-term goals #1-3. STGs #4-5 can be achieved within the next 3 weeks. With the use of a ${bilateral?'bilateral ':''} prosthesis, <<first name>> will have the ability to complete bed-to-chair transfers, ambulate minimally in <<his/her>> home environment, and perform ADLs and IADLs with minimal to moderate assistance. <<first name>> will decrease <<his/her>> need for assistance by 50% after 3 months of therapy with the use of a prosthesis.`,
+    K2:`<<First name>> is progressing well towards the goals established at evaluation, achieving short-term goals #1-${existing?'4':'5'}. STG #${existing?'4':'6'} can be achieved within the next 3 weeks. With the use of a ${bilateral?'bilateral ':''}prosthesis, <<first name>> will have the ability to navigate low environmental barriers and ambulate over uneven ground at a single speed within 6 months. <<first name>> may continue to use an assistive device for additional stability while ambulating greater than 50 feet. <<first name>> is a K2 level ambulator.`,
+    K3:`<<First name>> is progressing well towards the goals established at evaluation, achieving short-term goals #1-${existing?'6':'6'}. With the use of the ${bilateral?'bilateral ':''}${prosth}, <<first name>> will return to navigating environmental barriers and ambulating over uneven ground at varied walking speeds. <<first name>> will decrease <<his/her>> need for assistance by 75% with the new ${prosth}. <<first name>> will not require an assistive device for additional stability while ambulating inside or outside of the home within 6 months. <<first name>> is a K3 level ambulator.`,
+    K4:`<<First name>> is progressing well towards the goals established at evaluation, achieving short-term goals #1-${existing?'6':'6'}. STGs #${existing?'5':'7'}-${existing?'6':'8'} can be achieved within the next 3 weeks. With the use of ${bilateral?'bilateral ':''}${prosth}, <<first name>> will have the ability to navigate environmental barriers and ambulate over uneven ground at varied walking speeds within 6 months. <<first name>> will decrease <<his/her>> need for assistance by 100% after 3 months of therapy. <<first name>> will not require an assistive device for additional stability while ambulating inside or outside of the home. <<First name>> will be able to return to high-impact activities including running, jumping, climbing steep hills, and repetitive stair climbing. <<first name>> is a K4 level ambulator.`
+  };
+
+  const donning=existing
+    ?(kl==='K1'
+      ?`<<first name>> and <<his/her>> caregivers have experience with <<his/her>> previous ${prosth}. They demonstrated understanding and competence in donning, doffing, and cleaning the liner. With assistance from the caregivers, <<first name>> was able to don the liner and ${prosth} without issue.`
+      :`<<first name>> is an experienced prosthetic user. <<He/She caps>> was able to demonstrate proper donning of the ${liners}. <<He/She caps>> was able to don the ${bilateral?'bilateral prostheses':prosth} without issue.`)
+    :(kl==='K1'
+      ?`<<first name>> and <<his/her>> caregivers were previously counseled in the proper application of <<his/her>> ${liners}. Today, I again demonstrated proper donning of the liner. With assistance from the caregivers, <<first name>> was able to don the liner and ${prosth} without issue.`
+      :`<<first name>> was previously counseled in the proper application of <<his/her>> ${liners}. Today, <<he/she>> was able to demonstrate proper donning of the liner. With coaching, <<he/she>> was able to don the ${bilateral?'bilateral prostheses':prosth} without issue.`);
+
+  const weightBearing=kl==='K1'
+    ?`Using __________ as an assistive device and with moderate to maximal assistance, <<first name>> was able to stand and was cued to shift <<his/her>> weight over the prosthetic ${bilateral?'limbs':'leg'} to become fully seated in the ${socket}. <<first name>> reported no areas of discomfort while standing and bearing weight through the prosthetic ${bilateral?'limbs':'limb'}.`
+    :`Using __________ as an assistive device, <<first name>> was able to stand and was cued to shift <<his/her>> weight over the prosthetic ${bilateral?'limbs':'leg'} to become fully seated in the ${socket}. <<first name>> reported no areas of discomfort while standing and bearing weight through the prosthetic ${bilateral?'limbs':'limb'}. <<first name>> was cued to initiate gait${bilateral?'':' with the sound side'}. Observational gait analysis was performed. <<first name>> was able to maintain the stability of <<his/her>> ${bilateral?'knees':'<<affected side>> knee'} throughout the stance phase of gait, initiate knee flexion, swing the prosthetic ${bilateral?'limbs':'limb'} through, and achieve heel strike with a stable knee${bilateral?' bilaterally':''}. After ambulating 25 feet, <<first name>> was able to sit down in a controlled manner. ${existing?'<<first name>> noted improvement in comfort and function as compared with <<his/her>> previous prosthetic '+( bilateral?'limbs.':'limb.'):'<<first name>> did very well today but will benefit from further gait training.'} <<first name>> ambulated approximately _________ feet using _________ as an assistive device during our appointment today. <<He/She caps>> demonstrated stability on the ${bilateral?'prostheses':prosth}. Consistent heel strike, a smooth rollover of the prosthetic ${bilateral?'feet':'foot'}, and propulsive toe-off were observed following dynamic alignment. No gait deviations were appreciated.`;
+
+  return `DELIVERY — ${existing?'EXISTING PATIENT':'NEW AMPUTEE'} ${bilateral?'BILATERAL':'UNILATERAL'} ${kl}:
+
+Subjective opens with Evaluation Details paragraph, then: <<first/last name>> is a <<age>> <<sex>> who was seen today for fit and delivery of <<his/her>> ${limb}. OPC was asked to evaluate <<first name>> for a <<device type>> by <<referring phys>>. Include delivery location, patient demeanor, caregivers present from spoken notes.
+
+Objective: The ${bilateral?'prostheses were':'prosthesis was'} examined before fitting; no sharp edges were present, and all screws were torqued to the manufacturer's specifications. The ${bilateral?'prostheses were':'prosthesis was'} set in the alignment obtained during the diagnostic fitting.
+
+${donning}
+
+${weightBearing}
+
+After the alignment and fit were clinically approved, <<first name>> was asked to sit down and remove <<his/her>> ${liners}. A skin examination was performed; no concerns were appreciated. The importance of frequent skin checks and what to look for was explained to <<first name>>${kl==='K1'?' and <<his/her>> caregivers':''}. <<He/She caps>> reported understanding of the skin check procedure. <<first name>>${kl==='K1'?"'s caregivers were taught and were able to demonstrate":' was able to demonstrate'} proper donning and doffing of the ${bilateral?'prostheses':prosth}. <<First name>>${kl==='K1'?' and <<his/her>> caregivers were educated on':' was educated on'} proper washing and storage of the ${liners}.
+
+Include full Safety Check boilerplate${bilateral?' using bilateral language (prostheses, sockets, work orders, devices)':''}.
+
+ASSESSMENT — Expected LTGs (within 6 months following delivery of the definitive ${bilateral?'prostheses':prosth}):
+${ltgs[kl]}
+
+STGs (within 4 weeks following delivery):
+${stgs[kl]}
+
+${progress[kl]}
+
+TREATMENT PLAN:
+- Clinical: <<first name>> is comfortable and understands the use and break-in period with the new ${bilateral?'prostheses':prosth}.
+- Clinical: <<first name>> will notify <<practitioner (appt)>> and/or the <<branch patient (primary)>> office with concerns.
+- Clinical: Standard follow-up in one week.
+- Admin: Follow-up will be made in one week to check <<first name>>'s progress and answer any questions that may arise.
+
+Include full Education boilerplate${kl==='K1'?' (address to patient and caregivers)':''}.
+
+SCHEDULE: The patient was reminded to schedule a 1 Hour appointment for Follow-Up (Initial) in 1 Week(s). <<first name>>${kl==='K1'?' and <<his/her>> caregivers were':' was'} reminded that follow-up appointments can be scheduled at any time as needed by calling the <<branch patient (primary)>> office.`;
+}
+
+async function generateSOAP(){
+  const transcript=document.getElementById('transcript').value.trim();
+  if(!transcript){showToast('Please record or type your clinical notes first.','error');return;}
+  if(!currentNoteType){showToast('Please select a note type first.','error');return;}
+  if(!apiKey){showToast('Please enter your API key first.','error');openKeyModal();return;}
+  const btn=document.getElementById('generateBtn');
+  btn.classList.add('loading');btn.disabled=true;
+  document.getElementById('generateLabel').textContent='Generating...';
+  try{
+    const resp=await fetch('https://frosty-moon-276f.anne-l-dubois8.workers.dev/',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4096,system:buildSystemPrompt(),messages:[{role:'user',content:`Clinician spoken notes:\n\n${transcript}`}]})
+    });
+    if(!resp.ok){const err=await resp.json();throw new Error(err.error?.message||'API error '+resp.status);}
+    const data=await resp.json();
+    const raw=data.content[0].text.trim().replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+    const parsed=JSON.parse(raw);
+    document.getElementById('soap-s').value=parsed.s||'';
+    document.getElementById('soap-o').value=parsed.o||'';
+    document.getElementById('soap-a').value=parsed.a||'';
+    document.getElementById('soap-p').value=parsed.p||'';
+    ['s','o','a','p'].forEach(k=>{
+      document.getElementById('flag-'+k).classList.toggle('visible',(parsed[k]||'').trim().length<40);
+    });
+    const gapsPanel=document.getElementById('gapsPanel');
+    const gapsList=document.getElementById('gapsList');
+    if(parsed.gaps&&parsed.gaps.length>0){
+      gapsList.innerHTML=parsed.gaps.map(g=>`<div class="gap-item">${g}</div>`).join('');
+      gapsPanel.classList.add('visible');
+    }else{gapsPanel.classList.remove('visible');gapsList.innerHTML='';}
+    document.getElementById('outputNoteLabel').textContent=getNoteLabel();
+    document.getElementById('emptyState').style.display='none';
+    document.getElementById('soapOutput').style.display='block';
+    showToast('SOAP note generated.','success');
+  }catch(err){showToast('Error: '+err.message,'error');}
+  finally{btn.classList.remove('loading');btn.disabled=false;document.getElementById('generateLabel').textContent='Generate SOAP Note';}
+}
+
+function copyAll(){
+  const s=document.getElementById('soap-s').value;
+  const o=document.getElementById('soap-o').value;
+  const a=document.getElementById('soap-a').value;
+  const p=document.getElementById('soap-p').value;
+  const full=`SUBJECTIVE:\n${s}\n\nOBJECTIVE:\n${o}\n\nASSESSMENT:\n${a}\n\nPLAN:\n${p}`;
+  navigator.clipboard.writeText(full).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='Copied!';btn.classList.add('success');
+    setTimeout(()=>{btn.textContent='Copy Full Note';btn.classList.remove('success');},2200);
+  }).catch(()=>showToast('Copy failed. Select and copy manually.','error'));
+}
+
+function clearAll(){
+  ['soap-s','soap-o','soap-a','soap-p'].forEach(id=>document.getElementById(id).value='');
+  ['flag-s','flag-o','flag-a','flag-p'].forEach(id=>document.getElementById(id).classList.remove('visible'));
+  document.getElementById('gapsPanel').classList.remove('visible');
+  document.getElementById('gapsList').innerHTML='';
+  document.getElementById('soapOutput').style.display='none';
+  document.getElementById('emptyState').style.display='flex';
+  document.getElementById('transcript').value='';
+  finalTranscript='';
+  document.getElementById('outputNoteLabel').textContent='';
+}
+
+function openKeyModal(){document.getElementById('apiKeyInput').value=apiKey;document.getElementById('keyModal').classList.add('open');setTimeout(()=>document.getElementById('apiKeyInput').focus(),80);}
+function closeKeyModal(){document.getElementById('keyModal').classList.remove('open');}
+function saveKey(){
+  const val=document.getElementById('apiKeyInput').value.trim();
+  if(!val.startsWith('sk-')){showToast('Invalid API key format.','error');return;}
+  apiKey=val;document.getElementById('keyDot').classList.add('active');closeKeyModal();showToast('API key saved for this session.','success');
+}
+document.getElementById('keyModal').addEventListener('click',e=>{if(e.target===document.getElementById('keyModal'))closeKeyModal();});
+document.getElementById('apiKeyInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveKey();});
+
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
+}
+</script>
+</body>
+</html>
