@@ -244,7 +244,7 @@
 <div class="modal-overlay" id="keyModal">
   <div class="modal">
     <div class="modal-title">Anthropic API Key</div>
-    <div class="modal-sub">Stored in memory only for this session. Never saved to disk, never logged, never transmitted except directly to Anthropic's API to generate your note.</div>
+    <div class="modal-sub">Saved to this device only. Never transmitted except directly to Anthropic's API. You only need to enter this once per device.</div>
     <input class="modal-input" type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
     <div class="modal-note">No patient data is retained by this tool. Your spoken transcript is sent to Claude only to structure your clinical language into a SOAP note. Nothing is stored.</div>
     <div class="modal-btns">
@@ -257,8 +257,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let apiKey='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', currentNoteType='', deliveryPt='new', deliveryKL='K1';
+let apiKey=localStorage.getItem("opc_api_key")||"", currentNoteType="", deliveryPt="new", deliveryKL="K1";
 let recognition=null, isRecording=false, finalTranscript='';
+if(apiKey){document.getElementById("keyDot").classList.add("active");}else{setTimeout(()=>openKeyModal(),600);}
 
 // Waveform
 const wf=document.getElementById('waveform');
@@ -624,7 +625,7 @@ function closeKeyModal(){document.getElementById('keyModal').classList.remove('o
 function saveKey(){
   const val=document.getElementById('apiKeyInput').value.trim();
   if(!val.startsWith('sk-')){showToast('Invalid API key format.','error');return;}
-  apiKey=val;document.getElementById('keyDot').classList.add('active');closeKeyModal();showToast('API key saved for this session.','success');
+  apiKey=val;localStorage.setItem("opc_api_key",val);document.getElementById("keyDot").classList.add("active");closeKeyModal();showToast("API key saved to this device.","success");
 }
 document.getElementById('keyModal').addEventListener('click',e=>{if(e.target===document.getElementById('keyModal'))closeKeyModal();});
 document.getElementById('apiKeyInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveKey();});
