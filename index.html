@@ -257,7 +257,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let apiKey='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', currentNoteType='', deliveryPt='new', deliveryKL='K1';
+let apiKey='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', currentNoteType='', deliveryPt='new', deliveryKL='K1';
 let recognition=null, isRecording=false, finalTranscript='';
 
 // Waveform
@@ -570,8 +570,9 @@ async function generateSOAP(){
     });
     if(!resp.ok){const err=await resp.json();throw new Error(err.error?.message||'API error '+resp.status);}
     const data=await resp.json();
-    const raw=data.content[0].text.trim().replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
-    const parsed=JSON.parse(raw);
+    if(!data.content||!data.content[0]){throw new Error("Bad response: "+JSON.stringify(data).substring(0,300));}
+    const raw=data.content[0].text.trim().replace(/^```json\s*/,"").replace(/\s*```$/,"").trim();
+    let parsed;try{parsed=JSON.parse(raw);}catch(e){throw new Error("Parse error: "+raw.substring(0,200));}
     document.getElementById('soap-s').value=parsed.s||'';
     document.getElementById('soap-o').value=parsed.o||'';
     document.getElementById('soap-a').value=parsed.a||'';
